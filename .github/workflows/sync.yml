@@ -1,0 +1,51 @@
+name: Sincronizar juego desde cruza-cuy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-site
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sitio
+        uses: actions/checkout@v4
+        with:
+          path: site
+
+      - name: Checkout cruza-cuy
+        uses: actions/checkout@v4
+        with:
+          repository: uxlulu/cruza-cuy
+          path: src
+
+      - name: Copiar build web a la raíz y a /cruza-cuy/
+        run: |
+          set -euo pipefail
+          files="index.html index.js index.audio.worklet.js index.pck index.wasm index.wasm.gz index.png index.icon.png index.apple-touch-icon.png .nojekyll BUILD.txt README.md SHA256SUMS"
+          for f in $files; do
+            test -f "src/$f"
+            cp -a "src/$f" "site/$f"
+          done
+          mkdir -p site/cruza-cuy
+          for f in $files; do
+            cp -a "src/$f" "site/cruza-cuy/$f"
+          done
+          cd site
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "Sin cambios"
+          else
+            git commit -m "Sincronizar ¡Cruza, Cuy! v0.4 desde uxlulu/cruza-cuy"
+            git push
+          fi
